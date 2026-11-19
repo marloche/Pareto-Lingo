@@ -1,0 +1,30 @@
+{
+  "name": "pareto-lingo",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "check": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",
+    "build": "npm run check && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "packs:fetch": "node scripts/fetch-ru.ts",
+    "packs:build": "node scripts/build-ru.ts",
+    "packs:fetch:ja": "node scripts/fetch-stub.ts ja",
+    "packs:fetch:zh": "node scripts/fetch-stub.ts zh",
+    "packs:build:ja": "node scripts/build-stub.ts ja",
+    "packs:build:zh": "node scripts/build-stub.ts zh"
+  },
+  "dependencies": {
+    "idb": "^8.0.4",
+    "ts-fsrs": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  // Type-checks the pack build scripts and the Vite config, which run on Node 24 (type stripping).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2024"],
+    "types": ["node"]
+  },
+  "include": ["scripts", "vite.config.ts"]
+}
