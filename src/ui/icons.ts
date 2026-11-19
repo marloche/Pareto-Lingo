@@ -49,6 +49,7 @@ const SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidden=
 <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2.5l2.3 7.2 7.2 2.3-7.2 2.3L12 21.5l-2.3-7.2L2.5 12l7.2-2.3z" fill="currentColor"/></symbol>
 <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 5.5l6.5 6.5L9 18.5" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5.5L8.5 12l6.5 6.5" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-restart" viewBox="0 0 24 24"><path d="M5.5 12a6.5 6.5 0 1 0 2-4.7M5 4.5v3.8h3.8" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></symbol>
 <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -58,7 +59,7 @@ export function injectSprite(): void {
   if (!document.getElementById('mascot-happy')) document.body.insertAdjacentHTML('afterbegin', SPRITE);
 }
 
-export type IconName = 'speaker' | 'x' | 'home' | 'chart' | 'book' | 'sliders' | 'check' | 'lock' | 'dot' | 'spark' | 'chev' | 'back' | 'play' | 'down' | 'up';
+export type IconName = 'speaker' | 'x' | 'home' | 'chart' | 'book' | 'sliders' | 'check' | 'lock' | 'dot' | 'spark' | 'chev' | 'back' | 'restart' | 'play' | 'down' | 'up';
 
 /** A decorative icon; the button or link around it carries the accessible name. */
 export const icon = (name: IconName, cls = ''): Html =>

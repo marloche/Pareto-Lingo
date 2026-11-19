@@ -16,8 +16,10 @@ export interface Store {
   log(): Promise<ReviewEntry[]>;
   settings(): Promise<Settings>;
   saveSettings(s: Settings): Promise<void>;
-  /** Saves a review and the cards it changed, together. */
-  saveGrade(g: Graded): Promise<void>;
+  /** Saves a review and the cards it changed, together; returns the review's id in the log. */
+  saveGrade(g: Graded): Promise<number>;
+  /** Takes a saved review back: puts cards back as they were, deletes cards it created, drops the log entry. */
+  undoGrade(restore: CardRecord[], remove: string[], logId: number | undefined): Promise<void>;
   /** Replaces all progress with a backup's. */
   restore(b: Backup): Promise<void>;
 }
@@ -43,7 +45,18 @@ export async function openStore(name = 'pareto-lingo'): Promise<Store> {
     },
     async saveGrade(g) {
       const tx = db.transaction(['cards', 'log'], 'readwrite');
-      await Promise.all([...g.save.map((c) => tx.objectStore('cards').put(c)), tx.objectStore('log').add(g.entry), tx.done]);
+      const [id] = await Promise.all([tx.objectStore('log').add(g.entry), ...g.save.map((c) => tx.objectStore('cards').put(c)), tx.done]);
+      return id as number;
+    },
+    async undoGrade(restore, remove, logId) {
+      const tx = db.transaction(['cards', 'log'], 'readwrite');
+      const cards = tx.objectStore('cards');
+      await Promise.all([
+        ...restore.map((c) => cards.put(c)),
+        ...remove.map((k) => cards.delete(k)),
+        ...(logId === undefined ? [] : [tx.objectStore('log').delete(logId)]),
+        tx.done,
+      ]);
     },
     async restore(b) {
       const tx = db.transaction(['cards', 'log', 'meta'], 'readwrite');

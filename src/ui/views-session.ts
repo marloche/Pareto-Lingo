@@ -5,7 +5,7 @@ import { AGAIN, type Grade } from '../core/srs.ts';
 import { cardKey, type CardRecord } from '../core/progress.ts';
 import { SAME_SESSION_MINUTES } from '../core/study.ts';
 import { VERDICT_GRADE } from '../core/answer.ts';
-import { currentStep, sessionProgress } from '../core/session.ts';
+import { canGoBack, currentStep, sessionProgress } from '../core/session.ts';
 import { html, raw, type Html } from './html.ts';
 import { icon, mascot } from './icons.ts';
 import { count, interval, pct, wordTags } from './format.ts';
@@ -30,9 +30,11 @@ function progressBar(run: Run): Html {
   const { at, steps } = run.s;
   const w = steps.length ? (100 * at) / steps.length : 0;
   return html`<div class="sessionbar">
+    <button class="x back" data-act="back" aria-label="Back one card"${raw(canGoBack(run.s) ? '' : ' disabled')}>${icon('back')}</button>
     <button class="x" data-act="end" aria-label="End session">${icon('x')}</button>
     <div class="bar" role="progressbar" aria-label="Session progress" aria-valuemin="0" aria-valuemax="${steps.length}" aria-valuenow="${at}"><i style="width:${w.toFixed(1)}%"></i></div>
     <span aria-hidden="true">${at}/${steps.length}</span>
+    <button class="x restart" data-act="restart" aria-label="Restart lesson"${raw(canGoBack(run.s) ? '' : ' disabled')}>${icon('restart')}</button>
   </div>`;
 }
 
@@ -199,6 +201,7 @@ export function sessionPanel(run: Run, now: Date): Html {
       <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd>grade</div>
       <div><kbd>R</kbd>read aloud</div>
       <div><kbd>Enter</kbd>check typed answer</div>
+      <div><kbd>⌫</kbd>back one card</div>
       <div><kbd>Esc</kbd>end session</div>
     </div>
     <div class="spacer"></div>
@@ -236,6 +239,7 @@ export function summaryView(d: Data, done: Done): Html {
         </div>`
       : ''}
     <div class="spacer"></div>
-    <button class="btn primary" data-act="home">Back to Today</button>
+    <button class="btn soft" data-act="restart">Restart this lesson</button>
+    <button class="btn primary" data-act="home" style="margin-top:0.625rem">Back to Today</button>
   </div>`;
 }

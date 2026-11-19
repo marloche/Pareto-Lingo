@@ -4,7 +4,7 @@ A small language-practice app for phone and computer, built on the Pareto princi
 
 **App:** https://marloche.github.io/Pareto-Lingo/
 
-**Status:** Russian works end to end: alphabet, words, grammar, reading and typing tests, progress, offline use and backup (70 unit tests, plus a scripted browser run of every screen). Japanese and Chinese have starter packs (20 words each) to try the app with; not yet tried on an iPhone.
+**Status:** Russian works end to end: alphabet, words, grammar, reading and typing tests, progress, offline use and backup (72 unit tests, plus a scripted browser run of every screen). Japanese and Chinese have starter packs (20 words each) to try the app with; not yet tried on an iPhone.
 
 ## The method
 
@@ -26,7 +26,8 @@ A small language-practice app for phone and computer, built on the Pareto princi
 | Windows | Open the site in Chrome → Install (the icon in the address bar). |
 | Typing tests | Use the device's own keyboard for the language (a one-time setup in the system settings). Russian: stress marks, ё/е and capitals never count against you. Japanese: kana in either script, or the kanji. Chinese: hanzi, or pinyin with tone numbers (ni3) or marks (nǐ); pinyin without tones counts as Hard. |
 | Read aloud | Uses a voice installed on the device only, so nothing you study leaves it. iPhone: Settings → Accessibility → Spoken Content → Voices. Windows: Settings → Time & language → Speech → Add voices. |
-| Keys (computer) | Space next / show answer · 1–4 grade · Enter check · R read aloud · Esc end session |
+| Back and Restart | The arrow left of X steps back one card (and takes its grade back, so you can answer again). The circle arrow restarts the lesson from card 1 and takes back every answer in it; it is also on the summary until you leave it. Earlier lessons are never changed. |
+| Keys (computer) | Space next / show answer · 1–4 grade · Enter check · Backspace back one card · R read aloud · Esc end session |
 | Backup | Settings → Export progress saves one JSON file; Import progress replaces this device's progress with it. |
 
 ## Develop

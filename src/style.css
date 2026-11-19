@@ -196,6 +196,9 @@ body:has(.in-session) .toast { bottom: auto; top: calc(env(safe-area-inset-top, 
 .sessionbar .x { width: 2.75rem; height: 2.75rem; display: grid; place-items: center; color: var(--ink-soft); margin-left: -0.5rem; }
 .bar { flex: 1; height: 0.75rem; border-radius: 0.375rem; background: var(--track); overflow: hidden; }
 .bar i { display: block; height: 100%; border-radius: 0.375rem; background: linear-gradient(90deg, var(--primary), #F9C2A8); }
+.sessionbar .back + .x { margin-left: -0.75rem; }
+.sessionbar .back[disabled], .sessionbar .restart[disabled] { visibility: hidden; }
+.sessionbar .restart { margin: 0 -0.5rem 0 -0.5rem; }
 .sessionbar span { font-size: 0.8125rem; font-weight: 900; color: var(--ink-soft); min-width: 2.5rem; text-align: right; }
 .grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; flex: none; }
 .g { min-height: 4.375rem; border-radius: 1.25rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.1rem; padding: 0.25rem; }

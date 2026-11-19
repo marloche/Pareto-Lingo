@@ -3,14 +3,14 @@
 // change redraws the screen, then focus goes to where a screen reader should start.
 import type { Item, Pack } from './core/types.ts';
 import { GOOD, makeSrs, type Grade } from './core/srs.ts';
-import { cardKey, dayKey, ymd, type CardRecord, type Settings } from './core/progress.ts';
+import { cardKey, dayKey, ymd, type CardRecord, type ReviewEntry, type Settings } from './core/progress.ts';
 import { buildSession, newToday } from './core/queue.ts';
 import { gradeCard } from './core/study.ts';
 import { checkAnswer, VERDICT_GRADE } from './core/answer.ts';
 import { coverage } from './core/coverage.ts';
 import { forecast, streak } from './core/stats.ts';
 import { backupName, makeBackup, readBackup, type Backup } from './core/backup.ts';
-import { currentStep, estimateMinutes, introSeen, isOver, planCounts, startSession, summarize, testGraded, testedNew, type Session } from './core/session.ts';
+import { canGoBack, stepBack, currentStep, estimateMinutes, introSeen, isOver, planCounts, startSession, summarize, testGraded, testedNew, type Session } from './core/session.ts';
 import { matcherFor } from './lang/index.ts';
 import { openStore, type Store } from './store.ts';
 import type { Html } from './ui/html.ts';
@@ -195,6 +195,7 @@ function start(): void {
   run = freshRun(startSession(steps, now.getTime(), coverage(d.pack.items, d.cards).share));
   done = undefined;
   unlocked = [];
+  undos = [];
   show();
   autoSpeak('step');
 }
@@ -216,6 +217,54 @@ function advance(): void {
   autoSpeak('step');
 }
 
+/** Back one step. Going back over a graded card takes the grade back too, so it can be answered again. */
+function back(): void {
+  if (!d || !run || !canGoBack(run.s)) return;
+  undoStep(run.s);
+  run = freshRun(run.s);
+  show();
+}
+
+/** Takes one step of a session back, with its grade (cards, review history, and the database). */
+function undoStep(s: Session): void {
+  if (!d) return;
+  const step = stepBack(s);
+  const u = step?.kind === 'test' ? undos.pop() : undefined;
+  if (u) {
+    for (const [k, c] of u.before) {
+      if (c) d.cards.set(k, c);
+      else d.cards.delete(k);
+    }
+    const i = d.log.lastIndexOf(u.entry);
+    if (i >= 0) d.log.splice(i, 1);
+    if (u.unlocked) unlocked.pop();
+    const store = d.store;
+    const restore = u.before.flatMap(([, c]) => (c ? [c] : []));
+    const remove = u.before.flatMap(([k, c]) => (c ? [] : [k]));
+    writes = writes
+      .then(() => u.saved)
+      .then((id) => store.undoGrade(restore, remove, id))
+      .catch(() => toast('Going back couldn’t be saved on this device.'));
+  }
+}
+
+/**
+ * Restarts the lesson from its first card, taking back every answer given in it. Works mid-session and
+ * from its summary (until you leave the summary). Earlier sessions are never touched.
+ */
+function restart(): void {
+  const s = run?.s ?? ended;
+  if (!d || !s || !canGoBack(s)) return;
+  if (!confirm('Restart this lesson? Your answers in it are taken back, and it starts again from the first card.')) return;
+  while (canGoBack(s)) undoStep(s);
+  s.startedAt = Date.now();
+  ended = undefined;
+  done = undefined;
+  run = freshRun(s);
+  show();
+  autoSpeak('step');
+}
+
 function next(): void {
   if (!run || currentStep(run.s)?.kind !== 'intro') return;
   introSeen(run.s);
@@ -230,6 +279,19 @@ function reveal(): void {
   autoSpeak('reveal');
 }
 
+/** What a grade changed, so Back can undo it: the cards as they were (undefined = created), and the saved review. */
+interface GradeUndo {
+  before: [string, CardRecord | undefined][];
+  entry: ReviewEntry;
+  saved: Promise<number | undefined>;
+  unlocked: boolean;
+}
+let undos: GradeUndo[] = [];
+/** The session the summary is showing, kept so it can still be restarted from there. */
+let ended: Session | undefined;
+/** Database writes run one after another, so an undo never lands before the save it undoes. */
+let writes: Promise<unknown> = Promise.resolve();
+
 function grade(g: Grade): void {
   const step = run && currentStep(run.s);
   if (!d || !run || step?.kind !== 'test') return;
@@ -237,9 +299,16 @@ function grade(g: Grade): void {
   const item = d.byId.get(step.itemId);
   if (!item) return;
   const res = gradeCard(d.srs, d.cards, item, step.mode, g, new Date(), d.settings.dayStartHour);
+  const before = res.save.map((c): [string, CardRecord | undefined] => [c.key, d!.cards.get(c.key)]);
   for (const c of res.save) d.cards.set(c.key, c);
   d.log.push(res.entry);
-  d.store.saveGrade(res).catch(() => toast('That review couldn’t be saved on this device.'));
+  const store = d.store;
+  const saved = writes.then(() => store.saveGrade(res)).catch(() => {
+    toast('That review couldn’t be saved on this device.');
+    return undefined;
+  });
+  writes = saved;
+  undos.push({ before, entry: res.entry, saved, unlocked: !!res.unlocked });
   testGraded(run.s, res);
   if (res.unlocked) unlocked.push(item.stressed ?? item.text);
   advance();
@@ -282,6 +351,7 @@ function finish(): void {
   const s = run.s;
   run = undefined;
   if (!s.first.size) return show(); // ended before grading anything: nothing was saved
+  ended = s;
   const now = new Date();
   const h = d.settings.dayStartHour;
   const learned = testedNew(s).map((id) => d!.byId.get(id)?.kind ?? 'mixed');
@@ -302,6 +372,7 @@ function finish(): void {
 function home(): void {
   run = undefined;
   done = undefined;
+  ended = undefined;
   if (location.hash && location.hash !== '#today') {
     location.hash = '#today'; // hashchange draws Today
     return;
@@ -510,6 +581,10 @@ function act(name: string, el: HTMLElement): void {
       return grade(GOOD);
     case 'speak':
       return say(el.dataset.say ?? '');
+    case 'back':
+      return back();
+    case 'restart':
+      return restart();
     case 'end':
       return finish();
     case 'home':
@@ -556,7 +631,11 @@ function onKey(e: KeyboardEvent): void {
     e.preventDefault();
     return finish();
   }
-  if (field) return; // typing an answer: Enter submits the form
+  if (field) return; // typing an answer: Enter submits the form, Backspace deletes
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    return back();
+  }
   if (e.key.toLowerCase() === 'r') {
     e.preventDefault();
     const text = readAloudText();

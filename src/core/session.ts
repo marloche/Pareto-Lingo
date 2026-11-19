@@ -20,14 +20,27 @@ export interface Session {
   first: Map<string, Grade>;
   /** New items whose intro has been seen. */
   introduced: number;
+  /** One entry per step taken, newest last, so Back can take steps back. */
+  history: Undo[];
 }
+
+/** The session as it was before a step, plus the card whose first grade that step recorded (if any). */
+export interface Undo {
+  steps: Step[];
+  at: number;
+  introduced: number;
+  firstKey?: string;
+}
+
+const remember = (s: Session, firstKey?: string) =>
+  s.history.push({ steps: [...s.steps], at: s.at, introduced: s.introduced, ...(firstKey ? { firstKey } : {}) });
 
 export function startSession(steps: Step[], startedAt: number, coverageBefore: number): Session {
   const newIds = new Set(steps.filter((s) => s.kind === 'intro').map((s) => s.itemId));
   const reviewKeys = new Set(
     steps.flatMap((s) => (s.kind === 'test' && !newIds.has(s.itemId) ? [cardKey(s.itemId, s.mode)] : [])),
   );
-  return { steps, at: 0, startedAt, coverageBefore, reviewKeys, newIds, first: new Map(), introduced: 0 };
+  return { steps, at: 0, startedAt, coverageBefore, reviewKeys, newIds, first: new Map(), introduced: 0, history: [] };
 }
 
 export const currentStep = (s: Session): Step | undefined => s.steps[s.at];
@@ -36,6 +49,7 @@ export const isOver = (s: Session) => s.at >= s.steps.length;
 /** The current step is an intro and it has been seen. */
 export function introSeen(s: Session): void {
   if (currentStep(s)?.kind !== 'intro') throw new Error('The current step is not an intro.');
+  remember(s);
   s.introduced++;
   s.at++;
 }
@@ -44,9 +58,26 @@ export function introSeen(s: Session): void {
 export function testGraded(s: Session, g: Graded): void {
   const step = currentStep(s);
   if (step?.kind !== 'test') throw new Error('The current step is not a test.');
+  remember(s, s.first.has(g.entry.key) ? undefined : g.entry.key);
   if (!s.first.has(g.entry.key)) s.first.set(g.entry.key, g.entry.grade);
   if (g.again) insertLater(s.steps, s.at, { kind: 'test', itemId: step.itemId, mode: step.mode });
   s.at++;
+}
+
+export const canGoBack = (s: Session) => s.history.length > 0;
+
+/**
+ * Takes the last step back: the step it returns is current again, a card it sent round again is
+ * taken out, and its first grade is forgotten. Undoing the saved grade itself is the caller's job.
+ */
+export function stepBack(s: Session): Step | undefined {
+  const u = s.history.pop();
+  if (!u) return undefined;
+  s.steps = u.steps;
+  s.at = u.at;
+  s.introduced = u.introduced;
+  if (u.firstKey) s.first.delete(u.firstKey);
+  return currentStep(s);
 }
 
 export interface Progress {

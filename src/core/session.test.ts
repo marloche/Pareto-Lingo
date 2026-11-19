@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { currentStep, estimateMinutes, introSeen, isOver, planCounts, secondsPerCard, sessionProgress, startSession, summarize, testGraded } from './session.ts';
+import { canGoBack, stepBack, currentStep, estimateMinutes, introSeen, isOver, planCounts, secondsPerCard, sessionProgress, startSession, summarize, testGraded } from './session.ts';
 import type { Step } from './queue.ts';
 import { AGAIN, GOOD, HARD, type Grade } from './srs.ts';
 import type { Graded } from './study.ts';
@@ -64,6 +64,34 @@ describe('a session', () => {
     const s = startSession([intro('n'), test('n')], 0, 0);
     expect(summarize(s, 0).remembered).toBeNull();
     expect(summarize(s, 0).minutes).toBe(1);
+  });
+});
+
+describe('going back', () => {
+  it('takes back an intro, then a missed card and the repeat it added', () => {
+    const s = startSession([intro('n'), test('a'), test('b'), test('c'), test('d'), test('e')], 0, 0);
+    expect(canGoBack(s)).toBe(false);
+    introSeen(s);
+    testGraded(s, graded('a', AGAIN));
+    expect(s.steps.map((x) => x.itemId)).toEqual(['n', 'a', 'b', 'c', 'd', 'a', 'e']);
+    expect(stepBack(s)).toEqual(test('a'));
+    expect(s.steps.map((x) => x.itemId)).toEqual(['n', 'a', 'b', 'c', 'd', 'e']);
+    expect(s.first.has('a|read')).toBe(false);
+    expect(stepBack(s)).toEqual(intro('n'));
+    expect(s.introduced).toBe(0);
+    expect(canGoBack(s)).toBe(false);
+    expect(stepBack(s)).toBeUndefined();
+  });
+
+  it('keeps the first grade when the card was already graded earlier in the session', () => {
+    const s = startSession([test('a'), test('b')], 0, 0);
+    testGraded(s, graded('a', AGAIN)); // a comes back at the end
+    testGraded(s, graded('b', GOOD));
+    testGraded(s, graded('a', GOOD));
+    stepBack(s);
+    expect(s.first.get('a|read')).toBe(AGAIN);
+    expect(currentStep(s)?.itemId).toBe('a');
+    expect(summarize(s, 0).reviews).toBe(2);
   });
 });
 
