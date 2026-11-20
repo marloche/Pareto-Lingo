@@ -11,6 +11,7 @@ Raw downloads live in `data/raw/` (git-ignored). `npm run packs:fetch` pins each
 | [FrequencyWords](https://github.com/hermitdave/FrequencyWords) by Hermit Dave, built from [OpenSubtitles](https://www.opensubtitles.org) 2018 | `content/2018/ru/ru_full.txt`: how often each spelling appears in film and TV subtitles | Content CC BY-SA 4.0 (code MIT) | commit `525f9b5` |
 | [OpenRussian.org](https://en.openrussian.org) dictionary data, via [Badestrand/russian-dictionary](https://github.com/Badestrand/russian-dictionary) | `nouns.csv`, `verbs.csv`, `adjectives.csv`, `others.csv`: dictionary forms, stress marks, English meanings, every inflected form, gender, aspect, animacy | CC BY-SA 4.0 | commit `50e210c` |
 | [Tatoeba](https://tatoeba.org) | `rus_sentences`, `eng_sentences`, `rus-eng_links`: example sentences and their English translations | CC BY 2.0 FR (some sentences CC0) | the weekly export of the fetch date, recorded in `data/raw/ru/fetched.json` and in the pack's `sources` |
+| [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ru-02-%D0%B1%D1%83%D0%BA%D0%B2%D0%B0-%D0%91.ogg): `Ru-01-буква-А.ogg` … `Ru-33-буква-Я.ogg`, recorded by Cherus | the name of each letter, spoken (converted to mono .m4a with ffmpeg, silence trimmed, volume evened) | CC BY-SA 3.0 | per-file author, license and page in `scripts/lib/ru-letter-audio.json` |
 | Pareto-Lingo hand table (`scripts/lib/ru-extras.ts`, `ru-alphabet.ts`, `ru-grammar.ts`) | see below | CC BY-SA 4.0 | this repo |
 
 ### How the sources are changed
@@ -23,7 +24,8 @@ Written for this project and released under CC BY-SA 4.0. It holds only standard
 - **Missing forms:** pronoun forms after prepositions and in the instrumental (него, ней, ними, мной…), the future of быть (буду, будешь…), наш / ваш, case forms of один, два, три, оба, никто, кто-то, что-то.
 - **Better English** for very common words whose dictionary gloss misleads a beginner (a grammar label, or a rare sense listed first).
 - **Data fixes:** removing duplicate or mis-tagged entries that took counts from the real word (a noun «перед» meaning "before", a noun «рада» meaning "glad", «ага» as "cane toad"…), removing names that look like dictionary words (Генри "henry", Боб "bean"…), capitalising proper nouns written in lowercase, and requiring есть "there is" examples to be the «у меня есть» kind so they aren't "to eat".
-- **Alphabet hints:** the sound of each of the 33 letters, in English terms.
+- **Alphabet hints:** the sound of each of the 33 letters, in English terms. The "Sound" button has the device voice say a consonant before а (ба), й after а (ай), and vowels on their own; ъ and ь have no sound. No recording of bare letter sounds exists as a full set (Commons has two), so none is used.
+- **Letter example words:** picked by the build, not by hand: the most frequent pack word (a noun first, then a verb) with the letter at the start, in the middle and at the end.
 - **Grammar notes:** the titles and explanations of the 28 grammar patterns are AI-written and reviewed by the owner. Their example sentences come from Tatoeba, as above.
 
 ## Japanese and Chinese starter packs

@@ -22,6 +22,8 @@ export interface Session {
   introduced: number;
   /** One entry per step taken, newest last, so Back can take steps back. */
   history: Undo[];
+  /** A practice run (its title, e.g. "Alphabet"): graded like a lesson, but nothing is saved. */
+  practice?: string;
 }
 
 /** The session as it was before a step, plus the card whose first grade that step recorded (if any). */
@@ -35,12 +37,12 @@ export interface Undo {
 const remember = (s: Session, firstKey?: string) =>
   s.history.push({ steps: [...s.steps], at: s.at, introduced: s.introduced, ...(firstKey ? { firstKey } : {}) });
 
-export function startSession(steps: Step[], startedAt: number, coverageBefore: number): Session {
+export function startSession(steps: Step[], startedAt: number, coverageBefore: number, practice?: string): Session {
   const newIds = new Set(steps.filter((s) => s.kind === 'intro').map((s) => s.itemId));
   const reviewKeys = new Set(
     steps.flatMap((s) => (s.kind === 'test' && !newIds.has(s.itemId) ? [cardKey(s.itemId, s.mode)] : [])),
   );
-  return { steps, at: 0, startedAt, coverageBefore, reviewKeys, newIds, first: new Map(), introduced: 0, history: [] };
+  return { steps, at: 0, startedAt, coverageBefore, reviewKeys, newIds, first: new Map(), introduced: 0, history: [], ...(practice ? { practice } : {}) };
 }
 
 export const currentStep = (s: Session): Step | undefined => s.steps[s.at];

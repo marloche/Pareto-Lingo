@@ -52,6 +52,8 @@ export interface Done {
   newWhat: string;
   /** Words whose typing card this session unlocked. */
   unlocked: string[];
+  /** A practice run's title; its summary says nothing was saved. */
+  practice?: string;
 }
 
 /** Languages the app knows about; a language is offered once its pack exists. */

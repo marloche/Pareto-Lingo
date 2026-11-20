@@ -1,4 +1,5 @@
 // How numbers and dates read on screen.
+import { dayKey, shiftDay } from '../core/progress.ts';
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -26,6 +27,15 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 /** "Tuesday, 17 November". */
 export const longDate = (d: Date) => `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+
+/** A study day ("2026-11-17") as "Today", "Yesterday" or "Monday, 16 November". */
+export function dayLabel(key: string, now: Date, startHour: number): string {
+  const today = dayKey(now, startHour);
+  if (key === today) return 'Today';
+  if (key === shiftDay(today, -1)) return 'Yesterday';
+  const [y, m, d] = key.split('-').map(Number);
+  return longDate(new Date(y, m - 1, d, 12));
+}
 
 /** 0 → "midnight", 4 → "4:00 AM". */
 export const hourLabel = (h: number) => (h === 0 ? 'midnight' : `${h % 12 || 12}:00 ${h < 12 ? 'AM' : 'PM'}`);

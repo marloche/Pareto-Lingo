@@ -52,7 +52,22 @@ function wordCard(d: Data, item: Item, chips: Html, o: { meaning: boolean; focus
 }
 
 const exampleWord = (d: Data, ex: Example) =>
-  html`<div class="card exword"><span class="w" lang="${d.pack.lang}">${ex.text}</span>${speakButton(d, ex.text, true)}<span class="en">${ex.en}</span></div>`;
+  html`<div class="card exword"><span class="w">${sentence(d, ex)}</span>${speakButton(d, ex.text, true)}<span class="en">${ex.en}</span></div>`;
+
+/** A letter's big card: the letter, its sound hint, and buttons for its recorded name and its sound. */
+function letterCard(d: Data, item: Item, o: { note: boolean; focusGlyph: boolean }): Html {
+  const name = item.audio
+    ? html`<button class="pill" data-act="play" data-src="${item.audio}" aria-label="Play the letter’s name">${icon('speaker')}Name</button>`
+    : '';
+  const sound = item.sound
+    ? html`<button class="pill" data-act="speak" data-say="${item.sound}" aria-label="Say its sound: ${item.sound}">${icon('speaker')}Sound <span lang="${d.pack.lang}">${item.sound}</span></button>`
+    : '';
+  return html`<div class="card letter"><div class="glyph" lang="${d.pack.lang}"${o.focusGlyph ? FOCUS : ''}>${item.text}</div>
+    ${o.note ? html`<p class="note"${o.focusGlyph ? '' : FOCUS}>${item.note}</p><div class="pills">${name}${sound}</div>` : ''}</div>`;
+}
+
+/** Up to three words using the letter (start, middle, end), the letter marked in each. */
+const letterWords = (d: Data, item: Item) => html`<div class="exs">${item.examples.map((ex) => exampleWord(d, ex))}</div>`;
 
 /** Example cards, with the source credit on the last one. */
 const examples = (d: Data, list: Example[]) => list.map((e, i) => exampleCard(d, e, i === list.length - 1));
@@ -62,10 +77,9 @@ const gotIt = html`<button class="btn primary" data-act="next">Got it</button>`;
 function intro(d: Data, run: Run, item: Item): Html {
   const lang = d.pack.lang;
   if (item.kind === 'letter') {
-    const ex = item.examples[0];
     return html`<div class="chips"><span class="chip lemon caps">Alphabet · ${d.kindIndex.get(item.id)} of ${d.kindTotal.letter}</span></div>
-      <div class="card letter"><div class="glyph" lang="${lang}"${FOCUS}>${item.text}</div><p class="note">${item.note}</p></div>
-      ${ex ? exampleWord(d, ex) : ''}
+      ${letterCard(d, item, { note: true, focusGlyph: true })}
+      ${letterWords(d, item)}
       <div class="spacer"></div>
       ${mascot('happy', 96, 'mid')}
       ${gotIt}`;
@@ -91,8 +105,15 @@ function intro(d: Data, run: Run, item: Item): Html {
 }
 
 /** Grade buttons, each showing when the card would come back. */
-function grades(d: Data, card: CardRecord | undefined, now: Date): Html {
+function grades(d: Data, card: CardRecord | undefined, now: Date, practice = false): Html {
   const base = card?.srs ?? d.preview.newCard(now);
+  if (practice) {
+    // Practice changes no schedule, so there are no "back in 3 days" times to show.
+    return html`<p class="hint" id="grade-q">How well did you know it?</p>
+      <div class="grades" role="group" aria-labelledby="grade-q">
+        ${GRADES.map((g) => html`<button class="g ${GRADE_COLOR[g]}" data-act="grade" data-g="${g}"><kbd aria-hidden="true">${g}</kbd><b>${GRADE_LABEL[g]}</b></button>`)}
+      </div>`;
+  }
   return html`<p class="hint" id="grade-q">How well did you know it?</p>
     <div class="grades" role="group" aria-labelledby="grade-q">
       ${GRADES.map((g) => {
@@ -108,17 +129,18 @@ function readTest(d: Data, run: Run, item: Item, now: Date): Html {
   const lang = d.pack.lang;
   const card = d.cards.get(cardKey(item.id, 'read'));
   const back = run.revealed;
-  const kind = run.s.newIds.has(item.id) ? html`<span class="chip pink caps">Quick check</span>` : html`<span class="chip sky caps">Review</span>`;
+  const kind = run.s.practice
+    ? html`<span class="chip lav caps">Practice</span>`
+    : run.s.newIds.has(item.id) ? html`<span class="chip pink caps">Quick check</span>` : html`<span class="chip sky caps">Review</span>`;
   const foot = (question: string, show: string) =>
     back
-      ? grades(d, card, now)
+      ? grades(d, card, now, !!run.s.practice)
       : html`${mascot('happy', 120, 'mid')}<p class="hint">${question}</p><button class="btn soft" data-act="reveal">${show}</button>`;
 
   if (item.kind === 'letter') {
-    const ex = item.examples[0];
     return html`<div class="chips"><span class="chip lemon caps">Alphabet</span>${kind}</div>
-      <div class="card letter"><div class="glyph" lang="${lang}"${focusIf(!back)}>${item.text}</div>${back ? html`<p class="note"${FOCUS}>${item.note}</p>` : ''}</div>
-      ${back && ex ? exampleWord(d, ex) : ''}
+      ${letterCard(d, item, { note: back, focusGlyph: !back })}
+      ${back ? letterWords(d, item) : ''}
       <div class="spacer"></div>
       ${foot('What sound does it make? Think, then check.', 'Show sound')}`;
   }
@@ -163,7 +185,7 @@ function writeTest(d: Data, run: Run, item: Item): Html {
   const v = run.verdict;
   const lang = langInfo(d.pack.lang);
   return html`<div class="card">
-      <div class="chips"><span class="chip mint caps">Type it</span><span class="chip">${meaningOf(item)}</span></div>
+      <div class="chips">${run.s.practice ? html`<span class="chip lav caps">Practice</span>` : ''}<span class="chip mint caps">Type it</span><span class="chip">${meaningOf(item)}</span></div>
       ${ex ? html`<p class="en prompt">${ex.en}</p><p class="ru" style="margin-top:0.625rem">${sentence(d, ex, v ? 'mark' : 'blank')}</p>` : ''}
     </div>
     <form class="answer" id="answer-form" data-form="answer" autocomplete="off">
@@ -208,7 +230,30 @@ export function sessionPanel(run: Run, now: Date): Html {
     ${mascot('happy', 110, 'mid')}`;
 }
 
+/** The end of a practice run: how it went, and a reminder that nothing changed. */
+function practiceSummary(d: Data, done: Done): Html {
+  const s = done.summary;
+  const right = s.remembered === null ? 0 : Math.round(s.remembered * s.reviews);
+  return html`<div class="view session">
+    ${mascot('cheer', 150, 'mid')}
+    <div class="center">
+      <h1 class="large" lang="${d.pack.lang}"${FOCUS}>${langInfo(d.pack.lang).cheer}</h1>
+      <p class="sub" style="margin-top:0.375rem">Practice done: ${done.practice}, in ${count(s.minutes, 'minute')}.</p>
+    </div>
+    <div class="tiles">
+      <div class="tile mint"><b>${right} / ${s.reviews}</b><span>right first try</span></div>
+      <div class="tile sky"><b>${s.remembered === null ? '–' : `${Math.round(s.remembered * 100)}%`}</b><span>remembered</span></div>
+    </div>
+    <p class="sub center">Practice doesn’t change when cards come back.</p>
+    <div class="spacer"></div>
+    <button class="btn soft" data-act="restart">Practice again</button>
+    <button class="btn soft" data-act="home" data-to="progress" style="margin-top:0.625rem">More practice</button>
+    <button class="btn primary" data-act="home" style="margin-top:0.625rem">Back to Today</button>
+  </div>`;
+}
+
 export function summaryView(d: Data, done: Done): Html {
+  if (done.practice) return practiceSummary(d, done);
   const s = done.summary;
   const did = [s.reviews ? count(s.reviews, 'review') : '', s.fresh ? `${s.fresh} new` : ''].filter(Boolean).join(' and ');
   const gain = done.coverageAfter - done.coverageBefore;

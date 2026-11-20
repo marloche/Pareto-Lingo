@@ -2,6 +2,7 @@
 // handles taps and keys. Screens are plain functions of the state below (src/ui/views-*.ts); every
 // change redraws the screen, then focus goes to where a screen reader should start.
 import type { Item, Pack } from './core/types.ts';
+import { pastLessons, practiceSteps, topics, TOPIC_RUN } from './core/practice.ts';
 import { GOOD, makeSrs, type Grade } from './core/srs.ts';
 import { cardKey, dayKey, ymd, type CardRecord, type ReviewEntry, type Settings } from './core/progress.ts';
 import { buildSession, newToday } from './core/queue.ts';
@@ -15,7 +16,7 @@ import { matcherFor } from './lang/index.ts';
 import { openStore, type Store } from './store.ts';
 import type { Html } from './ui/html.ts';
 import { injectSprite } from './ui/icons.ts';
-import { count } from './ui/format.ts';
+import { count, dayLabel } from './ui/format.ts';
 import { canSpeak, initSpeech, speak, unlockSpeech } from './ui/speech.ts';
 import { openFile, saveFile } from './ui/files.ts';
 import { errorView, frame, grammarDetailView, grammarView, loadingView, progressView, settingsView, sourcesView, todayView, type Plan } from './ui/views-tabs.ts';
@@ -200,6 +201,28 @@ function start(): void {
   autoSpeak('step');
 }
 
+/**
+ * Practice a past day's lesson ("day:2026-11-18") or a topic ("topic:letters"). The cards are tested
+ * like reviews, but nothing is saved: the schedule stays as it is.
+ */
+function startPractice(id: string): void {
+  if (!d) return;
+  if (d.settings.speak) unlockSpeech();
+  const data = d;
+  const set = [...pastLessons(data.log, (i) => data.byId.has(i), data.settings.dayStartHour, Infinity), ...topics(data.pack.items, (k) => data.cards.has(k))].find((s) => s.id === id);
+  if (!set) return toast('Nothing to practice there yet.');
+  const isDay = id.startsWith('day:');
+  const steps = practiceSteps(set.keys, isDay ? Infinity : TOPIC_RUN);
+  const day = isDay ? dayLabel(set.title, new Date(), data.settings.dayStartHour) : '';
+  const title = !isDay ? set.title : day === 'Today' || day === 'Yesterday' ? `${day}’s lesson` : `the lesson of ${day}`;
+  run = freshRun(startSession(steps, Date.now(), coverage(data.pack.items, data.cards).share, title));
+  done = undefined;
+  unlocked = [];
+  undos = [];
+  show();
+  autoSpeak('step');
+}
+
 function learnMore(): void {
   if (!d) return;
   const now = new Date();
@@ -255,7 +278,7 @@ function undoStep(s: Session): void {
 function restart(): void {
   const s = run?.s ?? ended;
   if (!d || !s || !canGoBack(s)) return;
-  if (!confirm('Restart this lesson? Your answers in it are taken back, and it starts again from the first card.')) return;
+  if (!s.practice && !confirm('Restart this lesson? Your answers in it are taken back, and it starts again from the first card.')) return;
   while (canGoBack(s)) undoStep(s);
   s.startedAt = Date.now();
   ended = undefined;
@@ -299,6 +322,11 @@ function grade(g: Grade): void {
   const item = d.byId.get(step.itemId);
   if (!item) return;
   const res = gradeCard(d.srs, d.cards, item, step.mode, g, new Date(), d.settings.dayStartHour);
+  if (run.s.practice) {
+    // Practice: the session still sends a missed card round again, but the grade isn't kept.
+    testGraded(run.s, res);
+    return advance();
+  }
   const before = res.save.map((c): [string, CardRecord | undefined] => [c.key, d!.cards.get(c.key)]);
   for (const c of res.save) d.cards.set(c.key, c);
   d.log.push(res.entry);
@@ -365,19 +393,22 @@ function finish(): void {
     dueTomorrow: forecast(packCards(d), now, h, 2)[1],
     newWhat: learned.length === 1 ? one : many,
     unlocked,
+    ...(s.practice ? { practice: s.practice } : {}),
   };
   show();
 }
 
-function home(): void {
+/** Leaves the session or summary for a tab: Today, or Progress (where practice lives). */
+function home(to: 'today' | 'progress' = 'today'): void {
   run = undefined;
   done = undefined;
   ended = undefined;
-  if (location.hash && location.hash !== '#today') {
-    location.hash = '#today'; // hashchange draws Today
+  const hash = `#${to}`;
+  if ((location.hash || '#today') !== hash) {
+    location.hash = hash; // hashchange draws the tab
     return;
   }
-  route = { tab: 'today' };
+  route = { tab: to };
   show();
 }
 
@@ -390,6 +421,15 @@ function say(text: string, quiet = false): void {
     return;
   }
   speak(sayable(d, text), d.pack.tts);
+}
+
+/** One player for the letter recordings (bundled with the app, so they work offline). */
+const player = typeof Audio === 'undefined' ? undefined : new Audio();
+function play(src: string, quiet = false): void {
+  if (!player || !src) return;
+  if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
+  player.src = src;
+  player.play().catch(() => quiet || toast('That recording couldn’t play.'));
 }
 
 /** What read aloud says on the current session screen; never something that gives the answer away. */
@@ -413,6 +453,8 @@ function autoSpeak(on: 'step' | 'reveal' | 'check'): void {
     on === 'check' ||
     (on === 'reveal' && item.kind === 'letter') ||
     (on === 'step' && item.kind !== 'grammar' && (step.kind === 'intro' || (step.mode === 'read' && item.kind === 'word')));
+  // Letters play their recorded name; other items are read by the device voice.
+  if (now && item.kind === 'letter' && item.audio && (step.kind === 'intro' || run!.revealed)) return play(item.audio, true);
   const text = now ? readAloudText() : undefined;
   if (text) say(text, true);
 }
@@ -564,6 +606,8 @@ function act(name: string, el: HTMLElement): void {
       return start();
     case 'more':
       return learnMore();
+    case 'practice':
+      return startPractice(el.dataset.set ?? '');
     case 'next':
       return next();
     case 'reveal':
@@ -581,6 +625,8 @@ function act(name: string, el: HTMLElement): void {
       return grade(GOOD);
     case 'speak':
       return say(el.dataset.say ?? '');
+    case 'play':
+      return play(el.dataset.src ?? '');
     case 'back':
       return back();
     case 'restart':
@@ -588,7 +634,7 @@ function act(name: string, el: HTMLElement): void {
     case 'end':
       return finish();
     case 'home':
-      return home();
+      return home(el.dataset.to === 'progress' ? 'progress' : 'today');
     case 'lang':
       return void switchLang(el.dataset.lang ?? '');
     case 'new-dec':
@@ -638,6 +684,8 @@ function onKey(e: KeyboardEvent): void {
   }
   if (e.key.toLowerCase() === 'r') {
     e.preventDefault();
+    const item = d.byId.get(step.itemId);
+    if (item?.kind === 'letter' && item.audio && (step.kind === 'intro' || run.revealed)) return play(item.audio);
     const text = readAloudText();
     if (text) say(text);
     return;

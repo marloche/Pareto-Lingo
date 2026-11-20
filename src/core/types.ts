@@ -45,6 +45,10 @@ export interface Item {
   title?: string;
   /** Grammar: explanation. Letters: sound hint. */
   note?: string;
+  /** Letters: a recording of the letter's name, relative to the app ("audio/ru/letter-02.m4a"). */
+  audio?: string;
+  /** Letters: what the device voice says to show the sound ("ба"); absent for letters with no sound (ъ ь). */
+  sound?: string;
 }
 
 export interface PackSource {

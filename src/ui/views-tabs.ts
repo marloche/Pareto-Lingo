@@ -6,7 +6,8 @@ import { coverage, packCurve } from '../core/coverage.ts';
 import { reviewsByDay } from '../core/stats.ts';
 import { html, type Html } from './html.ts';
 import { icon, mascot } from './icons.ts';
-import { count, hourLabel, longDate, pct } from './format.ts';
+import { count, dayLabel, hourLabel, longDate, pct } from './format.ts';
+import { pastLessons, topics, TOPIC_RUN } from '../core/practice.ts';
 import { exampleCard, ring, tl } from './parts.ts';
 import { canSpeak } from './speech.ts';
 import { LANGS, langInfo, type Data, type Route } from './state.ts';
@@ -158,6 +159,7 @@ export function progressView(d: Data, now: Date): Html {
       <div><b>${known('grammar')}/${d.kindTotal.grammar ?? 0}</b><span>grammar</span></div>
       <div><b>${typing}</b><span>typing</span></div>
     </div>
+    ${practiceLists(d, now)}
     <div class="card" style="padding:0.75rem 0.875rem">
       <p class="sub" style="margin:0 0 0.5rem">Last 4 weeks</p>
       <div class="heat" role="img" aria-label="Studied on ${days.filter((n) => n > 0).length} of the last 28 days">
@@ -165,6 +167,26 @@ export function progressView(d: Data, now: Date): Html {
       </div>
     </div>
   </div>`;
+}
+
+/** Practice: repeat a past lesson or a topic. Nothing in a practice run is saved. */
+function practiceLists(d: Data, now: Date): Html {
+  const h = d.settings.dayStartHour;
+  const days = pastLessons(d.log, (id) => d.byId.has(id), h, 7);
+  const tops = topics(d.pack.items, (k) => d.cards.has(k));
+  if (!days.length && !tops.length) return html``;
+  const row = (set: string, label: string, meta: string) =>
+    html`<button class="li" data-act="practice" data-set="${set}"><span class="ic now">${icon('restart')}</span><span>${label}</span><span class="meta">${meta}</span>${icon('chev', 'chev')}</button>`;
+  return html`<p class="group-h" style="margin-top:0.5rem">Practice</p>
+    <p class="sub" style="margin:-0.25rem 0 0 0.875rem">Repeat for extra practice. It doesn’t change when cards come back.</p>
+    ${days.length
+      ? html`<p class="group-h">Past lessons</p>
+        <div class="list">${days.map((s) => row(s.id, dayLabel(s.title, now, h), `${count(s.keys.length, 'card')} · ${s.right} right`))}</div>`
+      : ''}
+    ${tops.length
+      ? html`<p class="group-h">By topic</p>
+        <div class="list">${tops.map((s) => row(s.id, s.title, s.keys.length > TOPIC_RUN ? `${TOPIC_RUN} of ${s.keys.length} cards` : count(s.keys.length, 'card')))}</div>`
+      : ''}`;
 }
 
 const isKnownCard = (d: Data, itemId: string, mode: 'read' | 'write') => {

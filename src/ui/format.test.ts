@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { count, hourLabel, interval, longDate, pct, wordTags } from './format.ts';
+import { count, dayLabel, hourLabel, interval, longDate, pct, wordTags } from './format.ts';
 
 const MIN = 60_000;
 const DAY = 24 * 60 * MIN;
 
 describe('format', () => {
+  it('names study days', () => {
+    const now = new Date(2026, 10, 18, 2); // 2 am: before the 4 am day start, so still the 17th
+    expect(dayLabel('2026-11-17', now, 4)).toBe('Today');
+    expect(dayLabel('2026-11-16', now, 4)).toBe('Yesterday');
+    expect(dayLabel('2026-11-15', now, 4)).toBe('Sunday, 15 November');
+  });
+
   it('says how long until a card comes back', () => {
     expect(interval(10 * MIN, true)).toBe('soon');
     expect(interval(10 * MIN)).toBe('10 min');

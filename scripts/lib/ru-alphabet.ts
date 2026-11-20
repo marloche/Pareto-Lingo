@@ -7,6 +7,18 @@ export interface Letter {
   hint: string;
 }
 
+const VOWELS = 'аеёиоуыэюя';
+/**
+ * What the device voice says to show a letter's sound. Speech voices read a lone consonant as its
+ * name (б → "бэ"), so consonants get a following "а" (ба), й a vowel before it (ай), and vowels are
+ * said as they are. The hard and soft signs have no sound of their own, so nothing.
+ */
+export function letterSound(lower: string): string | undefined {
+  if (lower === 'ъ' || lower === 'ь') return undefined;
+  if (lower === 'й') return 'ай';
+  return VOWELS.includes(lower) ? lower : lower + 'а';
+}
+
 export const LETTERS: Letter[] = [
   { upper: 'А', lower: 'а', hint: '“a” as in father' },
   { upper: 'Б', lower: 'б', hint: '“b” as in bed' },

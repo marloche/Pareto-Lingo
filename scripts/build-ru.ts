@@ -14,7 +14,7 @@ import type { Example, Item, Pack } from '../src/core/types.ts';
 import { apostropheToAccent, ruKey, ruPlain } from '../src/lang/ru.ts';
 import { creditCounts, loadCorpus, loadLemmas, type Lemma } from './lib/ru-data.ts';
 import { COMPOUND_FORMS, EXTRAS, PATCHES } from './lib/ru-extras.ts';
-import { LETTERS } from './lib/ru-alphabet.ts';
+import { LETTERS, letterSound } from './lib/ru-alphabet.ts';
 import { GRAMMAR_SPACING, PATTERNS } from './lib/ru-grammar.ts';
 import { isPlainSentence, makeTokenizer, similarity, type Tok } from './lib/ru-tokens.ts';
 
@@ -263,15 +263,55 @@ PATTERNS.forEach((p, k) => {
   grammarReport.push(`### ${p.title}\nAfter word #${after + 1} (${words[after].lemma.bare}). Found in sentences on ${grammarBest.get(p.id)!.size} different words.\n\n${p.note}\n\n${examples.map((e) => `- ${bold(e)} — *${e.en}*`).join('\n')}\n`);
 });
 
-const letterItems: Item[] = LETTERS.map((L) => {
-  const byContains = ['ё', 'й', 'ъ', 'ы', 'ь'].includes(L.lower);
-  const matching = words.filter(({ lemma }) => {
-    const plain = ruPlain(apostropheToAccent(lemma.show ?? lemma.accented)).toLowerCase();
-    return byContains ? plain.includes(L.lower) : plain.startsWith(L.lower);
+/**
+ * Where a letter sits in a stressed word, as [start, end) offsets into the stressed text, with a
+ * stress mark right after the letter included. Searches from the given plain-letter position on.
+ */
+function letterSpot(stressed: string, letter: string, where: 'start' | 'middle' | 'end'): [number, number] | undefined {
+  const spots: [number, number][] = [];
+  for (let i = 0; i < stressed.length; i++) {
+    if (stressed[i].toLowerCase() !== letter) continue;
+    spots.push([i, stressed[i + 1] === '́' ? i + 2 : i + 1]);
+  }
+  const letters = [...stressed].filter((c) => c !== '́');
+  const plainAt = (i: number) => [...stressed.slice(0, i)].filter((c) => c !== '́').length;
+  const ok = spots.filter(([a]) => {
+    const p = plainAt(a);
+    return where === 'start' ? p === 0 : where === 'end' ? p === letters.length - 1 : p > 0 && p < letters.length - 1;
   });
+  return ok[0];
+}
+
+const LETTER_WORDS = 3;
+// Recordings of the letter names (npm run packs:fetch:audio); a letter without one just has no name button.
+const LETTER_AUDIO_FILE = 'scripts/lib/ru-letter-audio.json';
+const LETTER_AUDIO = (existsSync(LETTER_AUDIO_FILE) ? JSON.parse(readFileSync(LETTER_AUDIO_FILE, 'utf8')) : []) as { author: string; license: string }[];
+if (LETTER_AUDIO.length && LETTER_AUDIO.some((m, i) => !existsSync(`public/audio/ru/letter-${String(i + 1).padStart(2, '0')}.m4a`))) throw new Error('letter recordings missing: npm run packs:fetch:audio');
+const stressedOf = new Map(words.map((w) => [w, apostropheToAccent(w.lemma.show ?? w.lemma.accented)]));
+const letterItems: Item[] = LETTERS.map((L, i) => {
+  // Up to three words: the letter at the start, in the middle, and at the end, most frequent first.
   // A concrete noun makes the best example word (жизнь, not the particle же); then a verb.
-  const w = matching.find((x) => x.lemma.pos === 'noun') ?? matching.find((x) => x.lemma.pos === 'verb') ?? matching[0];
-  const ex = w ? wordItem(w) : undefined;
+  // Slots no word fills (ы never starts a word) take the next word with the letter anywhere.
+  const used = new Set<(typeof words)[number]>();
+  const examples: Item['examples'] = [];
+  const take = (where: 'start' | 'middle' | 'end' | 'any') => {
+    const fits = words.flatMap((w) => {
+      if (used.has(w)) return [];
+      const stressed = stressedOf.get(w)!;
+      const spot = where === 'any'
+        ? letterSpot(stressed, L.lower, 'start') ?? letterSpot(stressed, L.lower, 'middle') ?? letterSpot(stressed, L.lower, 'end')
+        : letterSpot(stressed, L.lower, where);
+      return spot ? [{ w, spot }] : [];
+    });
+    const pick = fits.find((x) => x.w.lemma.pos === 'noun') ?? fits.find((x) => x.w.lemma.pos === 'verb') ?? fits[0];
+    if (!pick) return false;
+    used.add(pick.w);
+    const it = wordItem(pick.w);
+    examples.push({ text: it.stressed!, en: it.gloss[0] ?? '', src: 'pack', focus: pick.spot });
+    return true;
+  };
+  for (const where of ['start', 'middle', 'end'] as const) take(where);
+  while (examples.length < LETTER_WORDS && take('any'));
   return {
     id: `ru:l:${L.lower}`,
     kind: 'letter',
@@ -280,7 +320,9 @@ const letterItems: Item[] = LETTERS.map((L) => {
     title: `${L.upper} ${L.lower}`,
     note: L.hint,
     gloss: [],
-    examples: ex ? [{ text: ex.stressed!, en: ex.gloss[0] ?? '', src: 'pack' }] : [],
+    examples,
+    ...(LETTER_AUDIO[i] ? { audio: `audio/ru/letter-${String(i + 1).padStart(2, '0')}.m4a` } : {}),
+    ...(letterSound(L.lower) ? { sound: letterSound(L.lower) } : {}),
   };
 });
 
@@ -308,6 +350,7 @@ const pack: Pack = {
     { name: 'FrequencyWords (OpenSubtitles 2018)', url: 'https://github.com/hermitdave/FrequencyWords', license: 'CC BY-SA 4.0', usedFor: 'word frequencies', version: fetched.freqSha.slice(0, 7) },
     { name: 'OpenRussian.org dictionary data', url: 'https://github.com/Badestrand/russian-dictionary', license: 'CC BY-SA 4.0', usedFor: 'dictionary forms, stress, English meanings, word forms', version: fetched.openRussianSha.slice(0, 7) },
     { name: 'Tatoeba', url: 'https://tatoeba.org', license: 'CC BY 2.0 FR', usedFor: 'example sentences and translations (stress marks added)', version: fetched.fetchedAt },
+    ...(LETTER_AUDIO.length ? [{ name: `Wikimedia Commons: Russian letter names, recorded by ${[...new Set(LETTER_AUDIO.map((m) => m.author))].join(', ')}`, url: 'https://commons.wikimedia.org/wiki/File:Ru-02-%D0%B1%D1%83%D0%BA%D0%B2%D0%B0-%D0%91.ogg', license: [...new Set(LETTER_AUDIO.map((m) => m.license))].join(', '), usedFor: 'the recorded name of each letter (converted to .m4a); per-file credits in scripts/lib/ru-letter-audio.json' }] : []),
     { name: 'Pareto-Lingo hand table', url: 'https://github.com/marloche/Pareto-Lingo/tree/main/scripts/lib', license: 'CC BY-SA 4.0', usedFor: 'missing pronoun and number forms, data fixes, alphabet hints, grammar notes (scripts/lib in the app’s source code)' },
   ],
   items,

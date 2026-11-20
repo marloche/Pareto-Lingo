@@ -1,12 +1,12 @@
 # Russian pack report
 
-Built 2026-11-18 in 15 s. Sources: FrequencyWords `525f9b5`, OpenRussian `50e210c`, Tatoeba export of 2026-11-18.
+Built 2026-11-19 in 16 s. Sources: FrequencyWords `525f9b5`, OpenRussian `50e210c`, Tatoeba export of 2026-11-18.
 
 - **Items:** 5061: 33 letters, 5000 words, 28 grammar patterns
 - **Corpus:** 153,085,582 Cyrillic word tokens from film and TV subtitles
 - **Spellings matched to a dictionary word:** 94.2% (the rest are mostly names)
 - **Words skipped for having no usable example sentence:** 33 (0 of them in the top 2,000: none)
-- **Pack size:** 2.19 MB
+- **Pack size:** 2.20 MB
 
 ## Coverage curve
 Share of all word tokens in the corpus that the first N pack words account for (all their forms merged).
