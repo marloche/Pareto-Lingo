@@ -4,7 +4,7 @@ A small language-practice app for phone and computer, built on the Pareto princi
 
 **App:** https://marloche.github.io/Pareto-Lingo/
 
-**Status:** Russian works end to end: alphabet, words, grammar, reading and typing tests, progress, offline use and backup (77 unit tests, plus a scripted browser run of every screen). Japanese and Chinese have starter packs (20 words each) to try the app with; not yet tried on an iPhone.
+**Status:** Russian works end to end: alphabet, words, grammar, reading and typing tests, progress, offline use and backup (81 unit tests, plus a scripted browser run of every screen). Japanese and Chinese have starter packs (20 words each) to try the app with; not yet tried on an iPhone.
 
 ## The method
 
@@ -30,7 +30,7 @@ A small language-practice app for phone and computer, built on the Pareto princi
 | Practice | Progress → Practice: repeat a past day's lesson (the last 7 study days), or a topic (Alphabet, Words 1–50, 51–100…, Grammar; 20 random cards at a time). Practice never changes when cards come back. |
 | Letters | Name plays a recording of the letter's name; Sound has the device voice say it before a vowel (б → ба). Three common words show the letter at the start, middle and end. |
 | Keys (computer) | Space next / show answer · 1–4 grade · Enter check · Backspace back one card · R read aloud (on a letter: its name) · Esc end session |
-| Backup | Settings → Export progress saves one JSON file; Import progress replaces this device's progress with it. |
+| Backup | Settings → Export progress saves one JSON file; Import progress replaces this device's progress with it. Export shows when you last backed up. Once an answer that's in no backup is 7 days old, Today shows a "Back up your progress" chip that opens Export; idle days never trigger it. |
 
 ## Develop
 

@@ -297,6 +297,8 @@ body:has(.in-session) .toast { bottom: auto; top: calc(env(safe-area-inset-top, 
 .li .ic.done { background: var(--mint); color: var(--mint-ink); }
 .li .ic.now { background: var(--pink); color: var(--pink-ink); }
 .li .ic.lock { background: var(--track); color: var(--ink-soft); }
+.li .meta.due { color: var(--pink-ink); }
+.chip.backup { text-decoration: none; }
 .li .meta { margin-left: auto; font-size: 0.75rem; font-weight: 800; color: var(--ink-soft); white-space: nowrap; padding-left: 0.5rem; }
 .li.locked { color: var(--ink-soft); }
 .li .chev { width: 1rem; height: 1rem; color: var(--ink-soft); }

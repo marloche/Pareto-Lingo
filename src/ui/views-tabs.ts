@@ -4,9 +4,10 @@ import { cardKey, dayKey, shiftDay } from '../core/progress.ts';
 import { isKnown } from '../core/srs.ts';
 import { coverage, packCurve } from '../core/coverage.ts';
 import { reviewsByDay } from '../core/stats.ts';
-import { html, type Html } from './html.ts';
+import { html, raw, type Html } from './html.ts';
 import { icon, mascot } from './icons.ts';
-import { count, dayLabel, hourLabel, longDate, pct } from './format.ts';
+import { count, dayLabel, daysAgo, hourLabel, longDate, pct } from './format.ts';
+import { backupDue } from '../core/backup.ts';
 import { pastLessons, topics, TOPIC_RUN } from '../core/practice.ts';
 import { exampleCard, ring, tl } from './parts.ts';
 import { canSpeak } from './speech.ts';
@@ -59,6 +60,14 @@ export interface Plan {
   dueTomorrow: number;
 }
 
+/** Today's backup reminder, shown only when a backup is due. Tapping it opens Settings at Backup. */
+function backupChip(d: Data, now: Date): Html {
+  const due = backupDue(d.log, d.settings.lastBackup, now.getTime());
+  if (due === undefined) return html``;
+  const when = d.settings.lastBackup === undefined ? 'none yet' : `last ${due} days ago`;
+  return html`<a class="chip pink backup" href="#settings/backup">${icon('down')}Back up your progress · ${when}</a>`;
+}
+
 export function todayView(d: Data, plan: Plan, now: Date): Html {
   const lang = langInfo(d.pack.lang);
   const cov = coverage(d.pack.items, d.cards);
@@ -80,6 +89,7 @@ export function todayView(d: Data, plan: Plan, now: Date): Html {
       <div class="center"><h2 style="font-size:1.6rem;font-weight:900">All done for today</h2>
         <p class="sub" style="margin-top:0.5rem">${tomorrow ? `Come back tomorrow: ${tomorrow}.` : 'Nothing is due tomorrow.'}${plan.streak && plan.studiedToday ? html`<br>Today counts for your ${plan.streak}-day streak.` : ''}</p></div>
       ${coverCard}
+      <div class="chips">${backupChip(d, now)}</div>
       <div class="spacer"></div>
       ${plan.moreLeft ? html`<button class="btn soft" data-act="more">Learn 5 more</button>` : ''}
     </div>`;
@@ -109,6 +119,7 @@ export function todayView(d: Data, plan: Plan, now: Date): Html {
     <div class="chips">
       ${plan.streak ? html`<span class="chip lemon caps">${icon('spark')}${plan.streak}-day streak</span>` : ''}
       ${nextGrammar ? html`<span class="chip lav">Next grammar: ${nextGrammar.title}</span>` : ''}
+      ${backupChip(d, now)}
     </div>
   </div>`;
 }
@@ -231,7 +242,7 @@ export function grammarDetailView(d: Data, id: string): Html {
   </div>`;
 }
 
-export function settingsView(d: Data): Html {
+export function settingsView(d: Data, now: Date, atBackup = false): Html {
   const s = d.settings;
   const lang = langInfo(d.pack.lang);
   const hours = [0, 1, 2, 3, 4, 5, 6];
@@ -258,7 +269,7 @@ export function settingsView(d: Data): Html {
     ${!canSpeak(d.pack.tts) ? html`<p class="foot">No ${lang.name} voice on this device yet. iPhone: Settings → Accessibility → Spoken Content → Voices. Windows: Settings → Time &amp; language → Speech → Add voices. Online voices aren’t used, so nothing you study leaves the device.</p>` : ''}
     <p class="group-h">Backup</p>
     <div class="list">
-      <button class="li" data-act="export">${icon('down')}Export progress</button>
+      <button class="li" id="backup" data-act="export"${raw(atBackup ? ' data-focus' : '')}>${icon('down')}Export progress<span class="meta${backupDue(d.log, s.lastBackup, now.getTime()) === undefined ? '' : ' due'}">${s.lastBackup === undefined ? 'no backup yet' : `last: ${daysAgo(s.lastBackup, now.getTime())}`}</span></button>
       <button class="li" data-act="import">${icon('up')}Import progress${icon('chev', 'chev')}</button>
     </div>
     <p class="foot">On iPhone the home-screen app keeps its own storage. Export a file to move or keep your progress.</p>

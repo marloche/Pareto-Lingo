@@ -28,6 +28,12 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 /** "Tuesday, 17 November". */
 export const longDate = (d: Date) => `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 
+/** How long ago a moment was, in whole days: "today", "yesterday", "12 days ago". */
+export function daysAgo(t: number, now: number): string {
+  const n = Math.max(0, Math.floor((now - t) / 86_400_000));
+  return n === 0 ? 'today' : n === 1 ? 'yesterday' : `${n} days ago`;
+}
+
 /** A study day ("2026-11-17") as "Today", "Yesterday" or "Monday, 16 November". */
 export function dayLabel(key: string, now: Date, startHour: number): string {
   const today = dayKey(now, startHour);

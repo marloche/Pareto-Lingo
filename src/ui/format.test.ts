@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { count, dayLabel, hourLabel, interval, longDate, pct, wordTags } from './format.ts';
+import { count, dayLabel, daysAgo, hourLabel, interval, longDate, pct, wordTags } from './format.ts';
 
 const MIN = 60_000;
 const DAY = 24 * 60 * MIN;
 
 describe('format', () => {
+  it('says how many days ago', () => {
+    const now = new Date(2026, 10, 23, 12).getTime();
+    expect(daysAgo(now - 3_600_000, now)).toBe('today');
+    expect(daysAgo(now - 30 * 3_600_000, now)).toBe('yesterday');
+    expect(daysAgo(now - 12 * 86_400_000, now)).toBe('12 days ago');
+  });
+
   it('names study days', () => {
     const now = new Date(2026, 10, 18, 2); // 2 am: before the 4 am day start, so still the 17th
     expect(dayLabel('2026-11-17', now, 4)).toBe('Today');

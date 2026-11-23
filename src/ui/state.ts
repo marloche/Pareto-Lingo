@@ -27,7 +27,7 @@ export interface Data {
   store: Store;
 }
 
-export type Route = { tab: 'today' } | { tab: 'progress' } | { tab: 'grammar'; id?: string } | { tab: 'settings'; page?: 'sources' };
+export type Route = { tab: 'today' } | { tab: 'progress' } | { tab: 'grammar'; id?: string } | { tab: 'settings'; page?: 'sources' | 'backup' };
 
 export interface Run {
   s: Session;

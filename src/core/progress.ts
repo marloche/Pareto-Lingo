@@ -32,6 +32,8 @@ export interface Settings {
   dayStartHour: number;
   /** Read words and sentences aloud (Web Speech API). */
   speak: boolean;
+  /** When progress was last exported (or imported) on this device, in ms since 1970. */
+  lastBackup?: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = { lang: 'ru', newPerDay: 10, retention: 0.9, dayStartHour: 4, speak: true };

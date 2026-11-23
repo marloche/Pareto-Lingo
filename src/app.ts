@@ -104,7 +104,7 @@ function parseHash(hash: string): Route {
       return { tab };
     }
   }
-  if (tab === 'settings') return rest === 'sources' ? { tab, page: 'sources' } : { tab };
+  if (tab === 'settings') return rest === 'sources' || rest === 'backup' ? { tab, page: rest } : { tab };
   return { tab: 'today' };
 }
 
@@ -128,7 +128,7 @@ function tabPage(data: Data, now: Date): Html {
     case 'grammar':
       return route.id ? grammarDetailView(data, route.id) : grammarView(data);
     case 'settings':
-      return route.page === 'sources' ? sourcesView(data) : settingsView(data);
+      return route.page === 'sources' ? sourcesView(data) : settingsView(data, now, route.page === 'backup');
   }
 }
 
@@ -146,6 +146,7 @@ function show(focus: 'screen' | 'keep' = 'screen'): void {
   }
   window.scrollTo(0, 0);
   (root.querySelector<HTMLElement>('[data-focus]') ?? root.querySelector<HTMLElement>('h1'))?.focus({ preventScroll: true });
+  if (route.tab === 'settings' && route.page === 'backup') root.querySelector('#backup')?.scrollIntoView({ block: 'center' });
 }
 
 /** A selector that finds the focused control again after a redraw. */
@@ -483,7 +484,9 @@ async function exportProgress(): Promise<void> {
   if (!d) return;
   const now = new Date();
   const name = backupName(now);
-  if (await saveFile(name, JSON.stringify(makeBackup(d.settings, d.cards.values(), d.log, now)))) toast(`Saved ${name}`);
+  if (!(await saveFile(name, JSON.stringify(makeBackup(d.settings, d.cards.values(), d.log, now))))) return;
+  toast(`Saved ${name}`);
+  await saveSettings({ lastBackup: now.getTime() }); // ends the reminder until new answers are a week old
 }
 
 async function importProgress(): Promise<void> {
@@ -504,7 +507,8 @@ async function importProgress(): Promise<void> {
   );
   if (!ok) return;
   try {
-    await store.restore(b);
+    // The imported progress is exactly what that file holds, so it counts as backed up from then.
+    await store.restore(Number.isNaN(at.getTime()) ? b : { ...b, settings: { ...b.settings, lastBackup: at.getTime() } });
   } catch {
     toast('The backup couldn’t be written to this device’s storage. Nothing was changed.');
     return;

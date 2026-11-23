@@ -2,10 +2,31 @@ import { describe, expect, it } from 'vitest';
 import { GOOD, makeSrs } from './srs.ts';
 import { gradeCard } from './study.ts';
 import { DEFAULT_SETTINGS } from './progress.ts';
-import { backupName, makeBackup, readBackup } from './backup.ts';
+import { backupDue, backupName, makeBackup, readBackup } from './backup.ts';
 import { word } from './test-fixtures.ts';
 
 const t0 = new Date(2026, 10, 17, 10);
+
+describe('backup reminder', () => {
+  const DAY = 86_400_000;
+  const now = new Date(2026, 10, 23, 12).getTime();
+  const answer = (daysAgo: number) => ({ at: now - daysAgo * DAY, key: 't:w:1|read', grade: 3 as const });
+
+  it('is due once an answer in no backup is a week old', () => {
+    expect(backupDue([answer(6)], undefined, now)).toBeUndefined();
+    expect(backupDue([answer(8), answer(1)], undefined, now)).toBe(8);
+    expect(backupDue([answer(12)], now - 20 * DAY, now)).toBe(20);
+  });
+
+  it('never nags when nothing new was answered since the last backup', () => {
+    expect(backupDue([], undefined, now)).toBeUndefined();
+    expect(backupDue([answer(30)], now - 25 * DAY, now)).toBeUndefined();
+  });
+
+  it('counts only answers after the last backup', () => {
+    expect(backupDue([answer(30), answer(3)], now - 10 * DAY, now)).toBeUndefined();
+  });
+});
 
 describe('backup', () => {
   it('round-trips progress through a JSON file, dates included', async () => {

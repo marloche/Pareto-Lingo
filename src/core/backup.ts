@@ -12,6 +12,22 @@ export interface Backup {
   log: ReviewEntry[];
 }
 
+/** A backup is due once an answer that's in no backup is this many days old. */
+export const BACKUP_DUE_DAYS = 7;
+const DAY = 86_400_000;
+
+/**
+ * Whether to remind about a backup: only when some answer given after the last backup is at least
+ * `days` old, so idle days never nag. Returns the whole days since the last backup (or, with no backup
+ * yet, since the oldest answer), or undefined when no backup is due.
+ */
+export function backupDue(log: readonly ReviewEntry[], lastBackup: number | undefined, now: number, days = BACKUP_DUE_DAYS): number | undefined {
+  let oldest = Infinity;
+  for (const e of log) if (e.at > (lastBackup ?? -Infinity) && e.at < oldest) oldest = e.at;
+  if (oldest === Infinity || now - oldest < days * DAY) return undefined;
+  return Math.floor((now - (lastBackup ?? oldest)) / DAY);
+}
+
 export function makeBackup(settings: Settings, cards: Iterable<CardRecord>, log: readonly ReviewEntry[], now: Date): Backup {
   return { app: 'pareto-lingo', v: 1, exportedAt: now.toISOString(), settings, cards: [...cards], log: [...log] };
 }
